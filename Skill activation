@@ -1,0 +1,1174 @@
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+using UnityEngine.UI;
+using UnityEngine.EventSystems;
+
+public class SkillActivationFixed : MonoBehaviour, IPointerDownHandler, IPointerUpHandler
+{
+    // Samu, Markus
+    [SerializeField] GameObject defensiveSkill;
+    [SerializeField] string activeAbility;
+    [SerializeField] List<GameObject> abilities;
+    [SerializeField] GameObject abilitiesVisualClue;
+    [SerializeField] BulletTime bulletTime;
+    GameObject activatedAbility;
+    GameObject spawnPoint;
+    GameObject spawnedAbility;
+    GameObject shield1;
+    GameControl GameControl;
+    GameObject playerStats;
+    PlayerAbilities playerAbilities;
+    GameObject spawnedVisualClue;
+    [SerializeField] Image skill1, skill2, skill3;
+    [SerializeField] Image thunder, water, flame, shotgun, spear, shieldSprite, time, arrow, stun, death, speed, heal;
+    [SerializeField] Text abilityText;
+    GameObject TopRightSpawnPoint;
+    GameObject DownRightSpawnPoint;
+    GameObject DownMiddleRightSpawnPoint;
+    GameObject MiddleSpawnPoint;
+    GameObject shieldPosition;
+    GameObject ArrowsPosition;
+    GameObject lanternPosition;
+    SoundController soundController;
+    AbilityStats abilityStats;
+    MoveRight moveright;
+    BulletTime bullettime;
+    Shield shield;
+    [SerializeField] AudioClip castSound;
+    [SerializeField] Image image;
+    [SerializeField] Image imageCooldown;
+    [SerializeField] Animator cooldownFlash;
+    [SerializeField] Text cooldownNumber;
+    [SerializeField] Color imageColor;
+    bool cooldown = false;
+    bool cooldown1 = true;
+    bool buttonHeld = false;
+    bool onPointerDown = false;
+    string pointerName;
+    float t;
+    float buttonHeldTime;
+    private int skillLevel;
+    int penetration;
+    float cooldownTimer;
+    float cooldownCounter;
+    int abilityDamage;
+    int projectileSpeed;
+    int duration;
+    int progressBar;
+    int killsRemaining;
+    int shieldHP;
+    int timesCast;
+    float waitingTime;
+    int maximumNumberOfCast;
+    private Vector3 scaleChange;
+    Vector2 spawnPosition;
+
+    // Start is called before the first frame update
+    void Start()
+    {
+        MiddleSpawnPoint = GameObject.Find("MiddleSpawnPoint");
+        TopRightSpawnPoint = GameObject.Find("TopRightSpawnPoint");
+        DownRightSpawnPoint = GameObject.Find("DownRightSpawnPoint");
+        DownMiddleRightSpawnPoint = GameObject.Find("DownMiddleRightSpawnPoint");
+        shieldPosition = GameObject.Find("shieldPosition");
+        GameControl = GameObject.Find("GameController").GetComponent<GameControl>();
+        lanternPosition = GameObject.Find("lanternPosition");
+        ArrowsPosition = GameObject.Find("ArrowsPosition");
+        soundController = GameObject.Find("GameController").GetComponent<SoundController>();
+        playerStats = GameObject.Find("PlayerStats");
+        playerAbilities = playerStats.GetComponent<PlayerAbilities>();
+        skill1 = GameObject.Find("Skill1").GetComponent<Image>();
+        skill2 = GameObject.Find("Skill2").GetComponent<Image>();
+        skill3 = GameObject.Find("Skill3").GetComponent<Image>();
+        cooldownNumber.gameObject.SetActive(false);
+        setSprite();
+
+        if (playerAbilities.GetAbility("shield") > 0)
+        {
+            defensiveSkill.SetActive(true);
+            switch (playerAbilities.GetAbility("shield"))
+            {
+                case 1: shieldSprite.sprite = Resources.Load<Sprite>("Icons/shield1"); break;
+                case 2: shieldSprite.sprite = Resources.Load<Sprite>("Icons/shield2"); break;
+                case 3: shieldSprite.sprite = Resources.Load<Sprite>("Icons/shield3"); break;
+                case 4: shieldSprite.sprite = Resources.Load<Sprite>("Icons/shield4"); break;
+                case 5: shieldSprite.sprite = Resources.Load<Sprite>("Icons/shield5"); break;
+            }
+        }
+    }
+    // Update is called once per frame
+    void Update()
+    {
+        Ability1();
+
+        if (!onPointerDown) return;
+        if (Time.realtimeSinceStartup - buttonHeldTime > 2f)
+        {
+            buttonHeldTime = Time.realtimeSinceStartup;
+            Debug.Log("Button held");
+            switch (pointerName)
+            {
+                case "Skill1":
+                    InstantiateAbilityVisualClue(1); break;
+                case "Skill2":
+                    InstantiateAbilityVisualClue(2); break;
+                case "Skill3":
+                    InstantiateAbilityVisualClue(3); break;
+            }
+        }
+    }
+
+    public void OnPointerDown(PointerEventData eventData)
+    {
+        Debug.Log("name : " + eventData.pointerEnter.transform.parent.gameObject.name);
+        pointerName = eventData.pointerEnter.transform.parent.gameObject.name;
+        onPointerDown = true;
+    }
+
+    public void OnPointerUp(PointerEventData eventData)
+    {
+        onPointerDown = false;
+        Debug.Log("Button held false");
+        foreach (Transform child in abilitiesVisualClue.transform)
+        {
+            child.gameObject.SetActive(false);
+        }
+    }
+
+    private void SetAbilityThunder()
+    {
+        switch (playerAbilities.GetAbility("thunderbolt"))
+        {
+            case 1: thunder.sprite = Resources.Load<Sprite>("Icons/lightning1"); break;
+            case 2: thunder.sprite = Resources.Load<Sprite>("Icons/lightning2"); break;
+            case 3: thunder.sprite = Resources.Load<Sprite>("Icons/lightning3"); break;
+            case 4: thunder.sprite = Resources.Load<Sprite>("Icons/lightning4"); break;
+            case 5: thunder.sprite = Resources.Load<Sprite>("Icons/lightning5"); break;
+        }
+    }
+    private void SetAbilityFire()
+    {
+        switch (playerAbilities.GetAbility("fireBolt"))
+        {
+            case 1: flame.sprite = Resources.Load<Sprite>("Icons/fire1"); break;
+            case 2: flame.sprite = Resources.Load<Sprite>("Icons/fire2"); break;
+            case 3: flame.sprite = Resources.Load<Sprite>("Icons/fire3"); break;
+            case 4: flame.sprite = Resources.Load<Sprite>("Icons/fire4"); break;
+            case 5: flame.sprite = Resources.Load<Sprite>("Icons/fire5"); break;
+        }
+    }
+    private void SetAbilityWater()
+    {
+        switch (playerAbilities.GetAbility("waterPillar"))
+        {
+            case 1: water.sprite = Resources.Load<Sprite>("Icons/water_pillar1"); break;
+            case 2: water.sprite = Resources.Load<Sprite>("Icons/water_pillar2"); break;
+            case 3: water.sprite = Resources.Load<Sprite>("Icons/water_pillar3"); break;
+            case 4: water.sprite = Resources.Load<Sprite>("Icons/water_pillar4"); break;
+            case 5: water.sprite = Resources.Load<Sprite>("Icons/water_pillar5"); break;
+        }
+    }
+    private void SetAbilityShotgun()
+    {
+        switch (playerAbilities.GetAbility("shotgun"))
+        {
+            case 1: shotgun.sprite = Resources.Load<Sprite>("Icons/skull1"); break;
+            case 2: shotgun.sprite = Resources.Load<Sprite>("Icons/skull2"); break;
+            case 3: shotgun.sprite = Resources.Load<Sprite>("Icons/skull3"); break;
+            case 4: shotgun.sprite = Resources.Load<Sprite>("Icons/skull4"); break;
+            case 5: shotgun.sprite = Resources.Load<Sprite>("Icons/skull5"); break;
+        }
+    }
+    private void SetAbilitySpear()
+    {
+        switch (playerAbilities.GetAbility("spear"))
+        {
+            case 1: spear.sprite = Resources.Load<Sprite>("Icons/spear1"); break;
+            case 2: spear.sprite = Resources.Load<Sprite>("Icons/spear2"); break;
+            case 3: spear.sprite = Resources.Load<Sprite>("Icons/spear3"); break;
+            case 4: spear.sprite = Resources.Load<Sprite>("Icons/spear4"); break;
+            case 5: spear.sprite = Resources.Load<Sprite>("Icons/spear5"); break;
+        }
+    }
+
+    private void SetAbilityBulletTime()
+    {
+        switch (playerAbilities.GetAbility("bulletTime"))
+        {
+            case 1: time.sprite = Resources.Load<Sprite>("Icons/spear1"); break;
+            case 2: time.sprite = Resources.Load<Sprite>("Icons/spear2"); break;
+            case 3: time.sprite = Resources.Load<Sprite>("Icons/spear3"); break;
+            case 4: time.sprite = Resources.Load<Sprite>("Icons/spear4"); break;
+            case 5: time.sprite = Resources.Load<Sprite>("Icons/spear5"); break;
+        }
+    }
+
+    private void SetAbilityHailOfArrows()
+    {
+        switch (playerAbilities.GetAbility("hailOfArrows"))
+        {
+            case 1: arrow.sprite = Resources.Load<Sprite>("Icons/hailOfArrows1"); break;
+            case 2: arrow.sprite = Resources.Load<Sprite>("Icons/hailOfArrows2"); break;
+            case 3: arrow.sprite = Resources.Load<Sprite>("Icons/hailOfArrows3"); break;
+            case 4: arrow.sprite = Resources.Load<Sprite>("Icons/hailOfArrows4"); break;
+            case 5: arrow.sprite = Resources.Load<Sprite>("Icons/hailOfArrows5"); break;
+        }
+    }
+
+    private void SetAbilityStun()
+    {
+        switch (playerAbilities.GetAbility("beamOfLight"))
+        {
+            case 1: stun.sprite = Resources.Load<Sprite>("Icons/hailOfArrows1"); break;
+            case 2: stun.sprite = Resources.Load<Sprite>("Icons/hailOfArrows2"); break;
+            case 3: stun.sprite = Resources.Load<Sprite>("Icons/hailOfArrows3"); break;
+            case 4: stun.sprite = Resources.Load<Sprite>("Icons/hailOfArrows4"); break;
+            case 5: stun.sprite = Resources.Load<Sprite>("Icons/hailOfArrows5"); break;
+        }
+    }
+
+    private void SetAbilityDeath()
+    {
+        switch (playerAbilities.GetAbility("death"))
+        {
+            case 1: death.sprite = Resources.Load<Sprite>("Icons/hailOfArrows1"); break;
+            case 2: death.sprite = Resources.Load<Sprite>("Icons/hailOfArrows2"); break;
+            case 3: death.sprite = Resources.Load<Sprite>("Icons/hailOfArrows3"); break;
+            case 4: death.sprite = Resources.Load<Sprite>("Icons/hailOfArrows4"); break;
+            case 5: death.sprite = Resources.Load<Sprite>("Icons/hailOfArrows5"); break;
+        }
+    }
+
+    private void SetAbilitySpeed()
+    {
+        switch (playerAbilities.GetAbility("speed"))
+        {
+            case 1: speed.sprite = Resources.Load<Sprite>("Icons/hailOfArrows1"); break;
+            case 2: speed.sprite = Resources.Load<Sprite>("Icons/hailOfArrows2"); break;
+            case 3: speed.sprite = Resources.Load<Sprite>("Icons/hailOfArrows3"); break;
+            case 4: speed.sprite = Resources.Load<Sprite>("Icons/hailOfArrows4"); break;
+            case 5: speed.sprite = Resources.Load<Sprite>("Icons/hailOfArrows5"); break;
+        }
+    }
+    private void SetAbilityHeal()
+    {
+        switch (playerAbilities.GetAbility("heal"))
+        {
+            case 1: heal.sprite = Resources.Load<Sprite>("Icons/hailOfArrows1"); break;
+            case 2: heal.sprite = Resources.Load<Sprite>("Icons/hailOfArrows2"); break;
+            case 3: heal.sprite = Resources.Load<Sprite>("Icons/hailOfArrows3"); break;
+            case 4: heal.sprite = Resources.Load<Sprite>("Icons/hailOfArrows4"); break;
+            case 5: heal.sprite = Resources.Load<Sprite>("Icons/hailOfArrows5"); break;
+        }
+    }
+
+    private void setSprite()
+    {
+        switch (playerAbilities.getSkill1())
+        {
+            case 1:
+                SetAbilityThunder();
+                skill1.sprite = thunder.sprite;
+                break;
+            case 3:
+                SetAbilityFire();
+                skill1.sprite = flame.sprite;
+                break;
+            case 4:
+                SetAbilityWater();
+                skill1.sprite = water.sprite;
+                break;
+            case 5:
+                SetAbilityShotgun();
+                skill1.sprite = shotgun.sprite;
+                break;
+            case 6:
+                SetAbilitySpear();
+                skill1.sprite = spear.sprite;
+                break;
+            case 7:
+                SetAbilityBulletTime();
+                skill1.sprite = time.sprite;
+                break;
+            case 8:
+                SetAbilityHailOfArrows();
+                skill1.sprite = arrow.sprite;
+                break;
+            case 9:
+                SetAbilityStun();
+                skill1.sprite = stun.sprite;
+                break;
+            case 10:
+                SetAbilityDeath();
+                skill1.sprite = death.sprite;
+                break;
+            case 11:
+                SetAbilitySpeed();
+                skill1.sprite = speed.sprite;
+                break;
+            case 12:
+                SetAbilityHeal();
+                skill1.sprite = heal.sprite;
+                break;
+        }
+        switch (playerAbilities.getSkill2())
+        {
+            case 1:
+                SetAbilityThunder();
+                skill2.sprite = thunder.sprite;
+                break;
+            case 3:
+                SetAbilityFire();
+                skill2.sprite = flame.sprite;
+                break;
+            case 4:
+                SetAbilityWater();
+                skill2.sprite = water.sprite;
+                break;
+            case 5:
+                SetAbilityShotgun();
+                skill2.sprite = shotgun.sprite;
+                break;
+            case 6:
+                SetAbilitySpear();
+                skill2.sprite = spear.sprite;
+                break;
+            case 7:
+                SetAbilityBulletTime();
+                skill2.sprite = time.sprite;
+                break;
+            case 8:
+                SetAbilityHailOfArrows();
+                skill2.sprite = arrow.sprite;
+                break;
+            case 9:
+                SetAbilityStun();
+                skill2.sprite = stun.sprite;
+                break;
+            case 10:
+                SetAbilityDeath();
+                skill2.sprite = death.sprite;
+                break;
+            case 11:
+                SetAbilitySpeed();
+                skill2.sprite = speed.sprite;
+                break;
+            case 12:
+                SetAbilityHeal();
+                skill2.sprite = heal.sprite;
+                break;
+        }
+        switch (playerAbilities.getSkill3())
+        {
+            case 1:
+                SetAbilityThunder();
+                skill3.sprite = thunder.sprite;
+                break;
+            case 3:
+                SetAbilityFire();
+                skill3.sprite = flame.sprite;
+                break;
+            case 4:
+                SetAbilityWater();
+                skill3.sprite = water.sprite;
+                break;
+            case 5:
+                SetAbilityShotgun();
+                skill3.sprite = shotgun.sprite;
+                break;
+            case 6:
+                SetAbilitySpear();
+                skill3.sprite = spear.sprite;
+                break;
+            case 7:
+                SetAbilityBulletTime();
+                skill3.sprite = time.sprite;
+                break;
+            case 8:
+                SetAbilityHailOfArrows();
+                skill3.sprite = arrow.sprite;
+                break;
+            case 9:
+                SetAbilityStun();
+                skill3.sprite = stun.sprite;
+                break;
+            case 10:
+                SetAbilityDeath();
+                skill3.sprite = death.sprite;
+                break;
+            case 11:
+                SetAbilitySpeed();
+                skill3.sprite = speed.sprite;
+                break;
+            case 12:
+                SetAbilityHeal();
+                skill3.sprite = heal.sprite;
+                break;
+        }
+    }
+
+    public void Shield()
+    {
+        cooldownNumber.gameObject.SetActive(true);
+        if (cooldown == true)
+        {
+            return;
+        }
+        cooldown = true;
+
+        activatedAbility = abilities[1];
+        spawnPoint = shieldPosition;
+        skillLevel = playerAbilities.GetAbility("shield");
+        switch (skillLevel)
+        {
+            case 5:
+                cooldownTimer = 3;
+                cooldownCounter = 4;
+                duration = 3;
+                shieldHP = 3;
+                break;
+            case 4:
+                cooldownTimer = 3;
+                cooldownCounter = 4;
+                duration = 3;
+                shieldHP = 2;
+                break;
+            case 3:
+                cooldownTimer = 4;
+                cooldownCounter = 5;
+                duration = 3;
+                shieldHP = 2;
+                break;
+            case 2:
+                cooldownTimer = 5;
+                cooldownCounter = 6;
+                duration = 3;
+                shieldHP = 2;
+                break;
+            case 1:
+                cooldownTimer = 5;
+                cooldownCounter = 6;
+                duration = 3;
+                shieldHP = 1;
+                break;
+        }
+
+        spawnedAbility = Instantiate(activatedAbility, spawnPoint.transform.position, spawnPoint.transform.rotation);
+        spawnedAbility.GetComponent<Shield>().SetDuration(duration);
+        spawnedAbility.GetComponent<Shield>().SetShieldHP(shieldHP);
+
+        castSound = activatedAbility.GetComponent<AbilityStats>().GetSoundClip();
+        soundController.PlaySound(castSound);
+        StartCoroutine("Cooldown");
+    }
+
+    public void InstantiateAbility(int skill)
+    {
+        Debug.Log("Instantiate ability, skill " + skill);
+        cooldownNumber.gameObject.SetActive(true);
+        if (cooldown == true)
+        {
+            return;
+        }
+        cooldown = true;
+        //thunderbolt
+        if (playerAbilities.getSkill(skill) == 1)
+        {
+            Thunderbolt();
+        }
+        //Shield
+        if (playerAbilities.getSkill(skill) == 2)
+        {
+            Shield();
+        }
+        //Flame
+        if (playerAbilities.getSkill(skill) == 3)
+        {
+            Flame();
+        }
+        //Waterpillar
+        if (playerAbilities.getSkill(skill) == 4)
+        {
+            Waterpillar();
+        }
+        //Shotgun
+        if (playerAbilities.getSkill(skill) == 5)
+        {
+            Shotgun();
+        }
+        //Spear
+        if (playerAbilities.getSkill(skill) == 6)
+        {
+            Spear();
+        }
+        //Bullet time
+        if (playerAbilities.getSkill(skill) == 7)
+        {
+            BulletTime();
+        }
+        //Hail of Arrows
+        if (playerAbilities.getSkill(skill) == 8)
+        {
+            HailOfArrows();
+        }
+        //Stun
+        if (playerAbilities.getSkill(skill) == 9)
+        {
+            Stun();
+        }
+        //Death
+        if (playerAbilities.getSkill(skill) == 10)
+        {
+            Death();
+        }
+        //Speed
+        if (playerAbilities.getSkill(skill) == 11)
+        {
+            Speed();
+        }
+        //Life steal
+        if (playerAbilities.getSkill(skill) == 12)
+        {
+            Heal();
+        }
+        castSound = activatedAbility.GetComponent<AbilityStats>().GetSoundClip();
+        soundController.PlaySound(castSound);
+        StartCoroutine("Cooldown");
+    }
+
+    private void InstantiateAbilityVisualClue(int skill)
+    {
+        Debug.Log("Instantiate visual clue");
+        if (playerAbilities.getSkill(skill) == 1)
+        {
+            Debug.Log("lightning");
+            abilitiesVisualClue.transform.Find("lightning_preview").gameObject.SetActive(true);
+        }
+        //Flame
+        if (playerAbilities.getSkill(skill) == 3)
+        {
+            abilitiesVisualClue.transform.Find("fire_preview").gameObject.SetActive(true);
+        }
+        //Waterpillar
+        if (playerAbilities.getSkill(skill) == 4)
+        {
+            abilitiesVisualClue.transform.Find("waterpillar_preview").gameObject.SetActive(true);
+        }
+        //Shotgun
+        if (playerAbilities.getSkill(skill) == 5)
+        {
+            abilitiesVisualClue.transform.Find("shotgun_preview").gameObject.SetActive(true);
+        }
+        //Spear
+        if (playerAbilities.getSkill(skill) == 6)
+        {
+            abilitiesVisualClue.transform.Find("spear_preview").gameObject.SetActive(true);
+        }
+        
+        //Hail of Arrows
+        if (playerAbilities.getSkill(skill) == 8)
+        {
+            abilitiesVisualClue.transform.Find("arrows_preview").gameObject.SetActive(true);
+        }
+    }
+
+    private void BulletTime()
+    {
+        activatedAbility = abilities[6];
+        spawnPoint = lanternPosition;
+        skillLevel = playerAbilities.GetAbility("bulletTime");
+        switch (skillLevel)
+        {
+            case 5:
+                cooldownTimer = 10;
+                cooldownCounter = 11;
+                duration = 3;
+                break;
+            case 4:
+                cooldownTimer = 10;
+                cooldownCounter = 11;
+                duration = 3;
+                break;
+            case 3:
+                cooldownTimer = 12;
+                cooldownCounter = 13;
+                duration = 3;
+                break;
+            case 2:
+                cooldownTimer = 12;
+                cooldownCounter = 13;
+                duration = 3;
+                break;
+            case 1:
+                cooldownTimer = 12;
+                cooldownCounter = 13;
+                duration = 2;
+                break;
+        }
+        spawnedAbility = Instantiate(activatedAbility, spawnPoint.transform.position, spawnPoint.transform.rotation);
+        spawnedAbility.GetComponent<BulletTime>().setDuration(duration);
+    }
+
+    private void Spear()
+    {
+        activatedAbility = abilities[5];
+        spawnPoint = lanternPosition;
+        skillLevel = playerAbilities.GetAbility("spear");
+        switch (skillLevel)
+        {
+            case 5:
+                penetration = 99;
+                cooldownTimer = 2;
+                cooldownCounter = 3;
+                abilityDamage = 6;
+                break;
+
+            case 4:
+                penetration = 2;
+                cooldownTimer = 2;
+                cooldownCounter = 3;
+                abilityDamage = 3;
+                break;
+
+            case 3:
+                penetration = 2;
+                cooldownTimer = 2;
+                cooldownCounter = 3;
+                abilityDamage = 1;
+                break;
+
+            case 2:
+                penetration = 2;
+                cooldownTimer = 3;
+                cooldownCounter = 4;
+                abilityDamage = 1;
+                break;
+
+            case 1:
+                penetration = 1;
+                cooldownTimer = 3;
+                cooldownCounter = 4;
+                abilityDamage = 1;
+                break;
+        }
+        spawnedAbility = Instantiate(activatedAbility, spawnPoint.transform.position, activatedAbility.transform.rotation);
+        spawnedAbility.GetComponent<EnemyPenetration>().SetMaxEnemyPenetration(penetration);
+        spawnedAbility.GetComponent<AbilityStats>().SetAbilityDamage(abilityDamage);
+    }
+
+    private void Shotgun()
+    {
+        activatedAbility = abilities[4];
+        spawnPoint = lanternPosition;
+        skillLevel = playerAbilities.GetAbility("shotgun");
+        bool extraProjectile = false;
+        switch (skillLevel)
+        {
+            case 5:
+                penetration = 1;
+                cooldownTimer = 2;
+                cooldownCounter = 3;
+                abilityDamage = 2;
+                extraProjectile = true;
+                break;
+
+            case 4:
+                penetration = 1;
+                cooldownTimer = 2;
+                cooldownCounter = 3;
+                abilityDamage = 2;
+                break;
+
+            case 3:
+                penetration = 1;
+                cooldownTimer = 3;
+                cooldownCounter = 4;
+                abilityDamage = 2;
+                break;
+
+            case 2:
+                penetration = 1;
+                cooldownTimer = 3;
+                cooldownCounter = 4;
+                abilityDamage = 1;
+                break;
+
+            case 1:
+                penetration = 1;
+                cooldownTimer = 4;
+                cooldownCounter = 5;
+                abilityDamage = 1;
+                break;
+        }
+        spawnedAbility = Instantiate(activatedAbility, spawnPoint.transform.position, spawnPoint.transform.rotation);
+        if (extraProjectile)
+        {
+            spawnedAbility.transform.GetChild(3).gameObject.SetActive(true);
+            spawnedAbility.transform.GetChild(4).gameObject.SetActive(true);
+        }
+
+        // Loop over children to put ability damage
+        foreach (Transform child in spawnedAbility.transform)
+        {
+            child.GetComponent<AbilityStats>().SetAbilityDamage(abilityDamage);
+            child.GetComponent<EnemyPenetration>().SetMaxEnemyPenetration(penetration);
+        }
+
+    }
+
+    private void Flame()
+    {
+        activatedAbility = abilities[2];
+        spawnPoint = lanternPosition;
+        skillLevel = playerAbilities.GetAbility("fireBolt");
+        switch (skillLevel)
+        {
+            case 5:
+                cooldownTimer = 2;
+                cooldownCounter = 3;
+                penetration = 1;
+                abilityDamage = 1;
+                projectileSpeed = 10;
+                break;
+
+            case 4:
+                cooldownTimer = 2;
+                cooldownCounter = 3;
+                penetration = 1;
+                abilityDamage = 1;
+                projectileSpeed = 10;
+                break;
+
+            case 3:
+                cooldownTimer = 3;
+                cooldownCounter = 4;
+                penetration = 1;
+                abilityDamage = 1;
+                projectileSpeed = 10;
+                break;
+
+            case 2:
+                cooldownTimer = 3;
+                cooldownCounter = 4;
+                penetration = 1;
+                abilityDamage = 1;
+                projectileSpeed = 10;
+                break;
+
+            case 1:
+                cooldownTimer = 4;
+                cooldownCounter = 5;
+                penetration = 1;
+                abilityDamage = 1;
+                projectileSpeed = 10;
+                break;
+        }
+        spawnedAbility = Instantiate(activatedAbility, spawnPoint.transform.position, spawnPoint.transform.rotation);
+        spawnedAbility.GetComponent<EnemyPenetration>().SetMaxEnemyPenetration(penetration);
+        spawnedAbility.GetComponent<AbilityStats>().SetAbilityDamage(abilityDamage);
+        spawnedAbility.GetComponent<MoveRight>().SetProjectileSpeed(projectileSpeed);
+        spawnedAbility.GetComponent<MoveRight>().SetAbilityLevel(skillLevel);
+    }
+
+    private void Thunderbolt()
+    {
+        activatedAbility = abilities[0];
+        spawnPoint = TopRightSpawnPoint;
+        skillLevel = playerAbilities.GetAbility("thunderbolt");
+        switch (skillLevel)
+        {
+            case 5:
+                cooldownTimer = 3;
+                cooldownCounter = 4;
+                penetration = 99;
+                abilityDamage = 2;
+                waitingTime = 0.5f;
+                maximumNumberOfCast = 3;
+                StartCoroutine("SpawnMultipleAbilities");
+                break;
+            case 4:
+                cooldownTimer = 3;
+                cooldownCounter = 4;
+                penetration = 99;
+                abilityDamage = 2;
+                waitingTime = 1f;
+                maximumNumberOfCast = 2;
+                StartCoroutine("SpawnMultipleAbilities");
+                break;
+            case 3:
+                cooldownTimer = 3;
+                cooldownCounter = 4;
+                penetration = 99;
+                abilityDamage = 1;
+                waitingTime = 1f;
+                maximumNumberOfCast = 2;
+                StartCoroutine("SpawnMultipleAbilities");
+                break;
+            case 2:
+                cooldownTimer = 3;
+                cooldownCounter = 4;
+                penetration = 99;
+                abilityDamage = 1;
+                waitingTime = 1f;
+                maximumNumberOfCast = 1;
+                // Create coroutine which includes the for loop
+                StartCoroutine("SpawnMultipleAbilities");
+                break;
+            case 1:
+                cooldownTimer = 4;
+                cooldownCounter = 5;
+                penetration = 99;
+                abilityDamage = 1;
+                spawnedAbility = Instantiate(activatedAbility, spawnPoint.transform.position, spawnPoint.transform.rotation);
+                spawnedAbility.GetComponent<EnemyPenetration>().SetMaxEnemyPenetration(penetration);
+                spawnedAbility.GetComponent<AbilityStats>().SetAbilityDamage(abilityDamage);
+                break;
+        }
+    }
+
+    IEnumerator SpawnMultipleAbilities()
+    {
+        timesCast += 1;
+        if (timesCast == 1)
+        {
+            spawnPosition = new Vector2(spawnPoint.transform.position.x, spawnPoint.transform.position.y);
+        }
+        else
+        {
+            spawnPosition = new Vector2(spawnPoint.transform.position.x - 2 * timesCast, spawnPoint.transform.position.y);
+        }
+        spawnedAbility = Instantiate(activatedAbility, spawnPosition, spawnPoint.transform.rotation);
+        spawnedAbility.GetComponent<EnemyPenetration>().SetMaxEnemyPenetration(penetration);
+        spawnedAbility.GetComponent<AbilityStats>().SetAbilityDamage(abilityDamage);
+        yield return new WaitForSeconds(waitingTime);
+        if (timesCast < maximumNumberOfCast)
+        {
+            StartCoroutine("SpawnMultipleAbilities");
+        }
+        else
+        {
+            timesCast = 0;
+        }
+    }
+
+    private void Waterpillar()
+    {
+        activatedAbility = abilities[3];
+        spawnPoint = MiddleSpawnPoint;
+        skillLevel = playerAbilities.GetAbility("waterPillar");
+
+        switch (skillLevel)
+        {
+            case 5:
+                cooldownTimer = 5;
+                cooldownCounter = 6;
+                penetration = 99;
+                abilityDamage = 2;
+                duration = 3;
+                StartCoroutine("SizeChange");
+                break;
+            case 4:
+                cooldownTimer = 5;
+                cooldownCounter = 6;
+                penetration = 99;
+                abilityDamage = 2;
+                duration = 2;
+                StartCoroutine("SizeChange");
+                break;
+            case 3:
+
+                cooldownTimer = 5;
+                cooldownCounter = 6;
+                penetration = 99;
+                abilityDamage = 1;
+                duration = 2;
+                StartCoroutine("SizeChange");
+                break;
+
+            case 2:
+                cooldownTimer = 5;
+                cooldownCounter = 6;
+                penetration = 99;
+                abilityDamage = 1;
+                duration = 2;
+                break;
+
+            case 1:
+                cooldownTimer = 7;
+                cooldownCounter = 8;
+                penetration = 99;
+                abilityDamage = 1;
+                duration = 2;
+                break;
+        }
+        spawnedAbility = Instantiate(activatedAbility, spawnPoint.transform.position, spawnPoint.transform.rotation);
+        spawnedAbility.GetComponent<EnemyPenetration>().SetMaxEnemyPenetration(penetration);
+        spawnedAbility.GetComponent<AbilityStats>().SetAbilityDamage(abilityDamage);
+        spawnedAbility.GetComponent<AbilityStats>().SetDuration(duration);
+    }
+
+    private void HailOfArrows()
+    {
+        activatedAbility = abilities[7];
+        spawnPoint = ArrowsPosition;
+        skillLevel = playerAbilities.GetAbility("hailOfArrows");
+        bool extraProjectile1 = false;
+        bool extraProjectile2 = false;
+
+        switch (skillLevel)
+        {
+            case 5:
+                cooldownTimer = 4;
+                cooldownCounter = 5;
+                penetration = 1;
+                abilityDamage = 1;
+                extraProjectile2 = true;
+                break;
+            case 4:
+                cooldownTimer = 4;
+                cooldownCounter = 5;
+                penetration = 1;
+                abilityDamage = 1;
+                extraProjectile1 = true;
+                break;
+            case 3:
+                cooldownTimer = 6;
+                cooldownCounter = 7;
+                penetration = 1;
+                abilityDamage = 1;
+                extraProjectile1 = true;
+                break;
+
+            case 2:
+                cooldownTimer = 6;
+                cooldownCounter = 7;
+                penetration = 1;
+                abilityDamage = 1;
+                break;
+
+            case 1:
+                cooldownTimer = 7;
+                cooldownCounter = 8;
+                penetration = 1;
+                abilityDamage = 1;
+                break;
+        }
+        spawnedAbility = Instantiate(activatedAbility, spawnPoint.transform.position, spawnPoint.transform.rotation);
+        if (extraProjectile1)
+        {
+            spawnedAbility.transform.GetChild(5).gameObject.SetActive(true);
+            spawnedAbility.transform.GetChild(6).gameObject.SetActive(true);
+
+        }
+        else if (extraProjectile2)
+        {
+            spawnedAbility.transform.GetChild(5).gameObject.SetActive(true);
+            spawnedAbility.transform.GetChild(6).gameObject.SetActive(true);
+            spawnedAbility.transform.GetChild(7).gameObject.SetActive(true);
+            spawnedAbility.transform.GetChild(8).gameObject.SetActive(true);
+        }
+
+        foreach (Transform child in spawnedAbility.transform)
+        {
+            child.GetComponent<AbilityStats>().SetAbilityDamage(abilityDamage);
+            child.GetComponent<EnemyPenetration>().SetMaxEnemyPenetration(penetration);
+        }
+    }
+
+    private void Stun()
+    {
+        activatedAbility = abilities[8];
+        spawnPoint = lanternPosition;
+        skillLevel = playerAbilities.GetAbility("beamOfLight");
+        switch (skillLevel)
+        {
+            case 5:
+                cooldownTimer = 13;
+                cooldownCounter = 14;
+                duration = 5;
+                break;
+            case 4:
+                cooldownTimer = 13;
+                cooldownCounter = 14;
+                duration = 3;
+                break;
+            case 3:
+                cooldownTimer = 15;
+                cooldownCounter = 16;
+                duration = 3;
+                break;
+            case 2:
+                cooldownTimer = 15;
+                cooldownCounter = 16;
+                duration = 2;
+                break;
+            case 1:
+                cooldownTimer = 17;
+                cooldownCounter = 18;
+                duration = 2;
+                break;
+        }
+        spawnedAbility = Instantiate(activatedAbility, spawnPoint.transform.position, spawnPoint.transform.rotation);
+        spawnedAbility.GetComponent<Stun>().setStunDuration(duration);
+    }
+    private void Death()
+    {
+        activatedAbility = abilities[9];
+        spawnPoint = lanternPosition;
+        skillLevel = playerAbilities.GetAbility("death");
+        switch (skillLevel)
+        {
+            case 1:
+                cooldownTimer = 30;
+                cooldownCounter = 31;
+                abilityDamage = 10;
+                penetration = 99;
+                break;
+        }
+        spawnedAbility = Instantiate(activatedAbility, spawnPoint.transform.position, spawnPoint.transform.rotation);
+        spawnedAbility.GetComponent<AbilityStats>().SetAbilityDamage(abilityDamage);
+        spawnedAbility.GetComponent<EnemyPenetration>().SetMaxEnemyPenetration(penetration);
+    }
+
+    private void Speed()
+    {
+        activatedAbility = abilities[10];
+        spawnPoint = lanternPosition;
+        skillLevel = playerAbilities.GetAbility("speed");
+        switch (skillLevel)
+        {
+            case 5:
+                cooldownTimer = 15;
+                cooldownCounter = 16;
+                progressBar -= 5;
+                duration = 4;      
+                break;
+            case 4:
+                cooldownTimer = 15;
+                cooldownCounter = 16;
+                progressBar -= 4;
+                duration = 3;            
+                break;
+            case 3:
+                cooldownTimer = 18;
+                cooldownCounter = 19;
+                progressBar -= 4;
+                duration = 3;              
+                break;
+            case 2:
+                cooldownTimer = 18;
+                cooldownCounter = 19;
+                progressBar -= 3;
+                duration = 2;              
+                break;
+            case 1:
+                cooldownTimer = 20;
+                cooldownCounter = 21;
+                progressBar -= 3;
+                duration = 2;             
+                break;
+        }
+        spawnedAbility = Instantiate(activatedAbility, spawnPoint.transform.position, spawnPoint.transform.rotation);
+        spawnedAbility.GetComponent<SpeedBoost>().SetDuration(duration);
+        spawnedAbility.GetComponent<ProgressBar>().SetTimeMax(progressBar);
+        
+    }
+
+    private void Heal()
+    {
+        activatedAbility = abilities[11];
+        spawnPoint = lanternPosition;
+        skillLevel = playerAbilities.GetAbility("heal");
+        switch (skillLevel)
+        {
+            case 5:
+                penetration = 15;
+                cooldownTimer = 6;
+                cooldownCounter = 7;
+                abilityDamage = 2;
+                killsRemaining = 10;
+                break;
+
+            case 4:
+                penetration = 15;
+                cooldownTimer = 6;
+                cooldownCounter = 7;
+                abilityDamage = 2;
+                killsRemaining = 15;
+                break;
+
+            case 3:
+                penetration = 2;
+                cooldownTimer = 6;
+                cooldownCounter = 7;
+                abilityDamage = 2;
+                killsRemaining = 15;
+                break;
+
+            case 2:
+                penetration = 2;
+                cooldownTimer = 6;
+                cooldownCounter = 7;
+                abilityDamage = 1;
+                killsRemaining = 20;
+                break;
+
+            case 1:
+                penetration = 2;
+                cooldownTimer = 8;
+                cooldownCounter = 9;
+                abilityDamage = 1;
+                killsRemaining = 20;
+                break;
+        }
+        spawnedAbility = Instantiate(activatedAbility, spawnPoint.transform.position, activatedAbility.transform.rotation);
+        spawnedAbility.GetComponent<EnemyPenetration>().SetMaxEnemyPenetration(penetration);
+        spawnedAbility.GetComponent<AbilityStats>().SetAbilityDamage(abilityDamage);
+        spawnedAbility.GetComponent<LifeSteal>().setKillsRemaining(killsRemaining);
+    }
+
+   
+    private void Ability1()
+    {
+        if (cooldown1 == false)
+        {
+            cooldown1 = true;
+            imageCooldown.fillAmount = 1f;
+        }
+        if (cooldown1 == true)
+        {
+            imageCooldown.fillAmount -= 1.0f / cooldownTimer * Time.deltaTime;
+            if (cooldownCounter > 0)
+            {
+                cooldownNumber.text = (cooldownCounter -= Time.deltaTime).ToString("F0");
+            }
+            if (imageCooldown.fillAmount <= 0)
+            {
+                imageCooldown.fillAmount = 0;
+                cooldown1 = true;
+            }
+        }
+    }
+
+
+    IEnumerator Cooldown()
+    {
+        cooldown = true;
+        cooldown1 = false;
+        yield return new WaitForSeconds(cooldownTimer);
+        cooldownNumber.gameObject.SetActive(false);
+        cooldownFlash.SetTrigger("flash");
+        cooldown1 = true;
+        cooldown = false;
+    }
+
+    IEnumerator SizeChange()
+    {
+        scaleChange = new Vector3(0.3f, 0.3f, 0.3f);
+        abilities[3].transform.localScale += scaleChange;
+        yield return new WaitForSeconds(5);
+        abilities[3].transform.localScale -= scaleChange;
+    }
+}
